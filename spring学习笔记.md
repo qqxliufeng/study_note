@@ -245,3 +245,54 @@ public class MyTest {
 3. 总结：
 
    综上所述`aop`就是把什么配置到什么上，在`spring`事务中就是把哪一个事务控制类控制哪个目标方法上。
+
+4. **spring**事务的属性之传播行为：
+
+   `@Transactional`注解有一个属性`propagation`默认的配置是`REQUIRED`，可以有好几种配置，常用的就两个：
+
+   `REQUIRED`，`REQUIRES_NEW`。required的意思就是和外面的大事务共用一个事务，若是外面没有大事务，则自己开启一个事务。`requires_new`的意思是自己单独开启一个新的事务，和外面的事务没有关系。
+
+   要想`requires_new`起作用，则必须把两个事务目标方法写在不同的类中，如下：
+
+   **MyTransactionTest**:
+
+   ```java
+   @Service
+   public class MyTransactionTest {
+   
+       @Autowired
+       MyTransactionTest2 myTransactionTest2;
+   
+       @Transactional
+       public void account () {
+           myTransactionTest2.account1();
+           myTransactionTest2.account2();
+       }
+   }
+   ```
+
+   **MyTransactionTest2**:
+
+   ```java
+   
+   @Service
+   public class MyTransactionTest2 {
+   
+       @Autowired
+       JdbcTemplate template;
+   
+       @Transactional(propagation = Propagation.REQUIRES_NEW)
+       public void account1 () {
+           template.update("update user set name = ? where id = ?", "呵呵2", 2);
+       }
+   
+       @Transactional(propagation = Propagation.REQUIRED)
+       public void account2 () {
+           template.update("update user set name = ? where id = ?", "呵呵3", 3);
+       }
+   }
+   ```
+
+   记住一句话：
+
+   **对于用`REQUIRES_NEW`注解的方法，若是已经执行了，则会提交成功，不会因为外面的异常而回滚。**而用`REQUIRED`注解的事务则会因为其它事务的异常而导致回滚。
