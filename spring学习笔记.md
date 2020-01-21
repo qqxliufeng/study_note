@@ -14,7 +14,7 @@ Spring中维护了一个容器，在SpringMVC中也维护了一个容器，两�
 
 + 没有此注解驱动的时候：springmvc在初始化处理器时候会通过一个DispatcherServlet.properties中的配置：
 
-  ```.properties
+  ```properties
   org.springframework.web.servlet.HandlerMapping=org.springframework.web.servlet.handler.BeanNameUrlHandlerMapping,\
   	org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping
   ```
@@ -153,3 +153,95 @@ public class MyTest {
 ***
 
 以上就是java原生的动态代理实现过程和原理。当然目标类可以不一定非得实现一个接口，可以用第三方的库`cglib`来实现动态代理。Spring对两种方式都有实现。
+
+### 4. Spring的事务管理
+
+**spring**中的事务管理是基于**aop**的。
+
+**需要的jar包：**
+
+> **所有的aop有关的包**
+>
+> **数据源连接管理包：c3p0-0.9.1.2.jar**
+>
+> **mysql驱动包：mysql-connector-java-8.0.18.jar**
+
+1. 基于注解的事务：
+
+   在`applicationContext.xml`中配置相关的配置：
+
+   ```xml
+   //扫描配置
+   <context:component-scan base-package="com"></context:component-scan>
+   //配置数据源，这里用的的一个第三方c3p0来管理数据源和连接
+   <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+           <property name="user" value="root"></property>
+           <property name="password" value="12345678"></property>
+           <property name="driverClass" value="com.mysql.cj.jdbc.Driver"/>
+    				<property name="jdbcUrl" value="jdbc:mysql://localhost:3306/test_data"></property>
+   </bean>
+   //spring中自带的jdbc实现，以后会被mybatis来代替
+   <bean class="org.springframework.jdbc.core.JdbcTemplate">
+           <property name="dataSource" ref="dataSource"></property>
+   </bean>
+   //配置spring中的事务管理器，这个类相当于aop中的切面类，把里面的方法动态的切入目标方法中
+   <bean  id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+           <property name="dataSource" ref="dataSource"></property>
+   </bean>
+   //开启基于注解的事务管理功能，这个配置的功能就是相当于用xml配置版的aop配置，把事务管理器的前后等方法切入到目标方法中
+   <tx:annotation-driven/>
+   ```
+
+2. 编写java的service:
+
+   ```java
+   @Service
+   public class MyTransactionTest {
+   
+       @Autowired
+       JdbcTemplate template;
+   
+     	//告诉spring此方法需要事务管理
+       @Transactional
+       public void account () {
+           template.update("update user set name = ? where id = ?", "呵呵", 2);
+       }
+   }
+   ```
+
+以上便是管理的**spring**事务管理配置。 
+
+2. 基于xml的事务配置：
+
+   在`applicationContext.xml`中配置
+
+   ```xml
+   <context:component-scan base-package="com"></context:component-scan>
+   <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+           <property name="user" value="root"></property>
+           <property name="password" value="12345678"></property>
+           <property name="driverClass" value="com.mysql.cj.jdbc.Driver"></property>
+           <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/test_data"></property>
+       </bean>
+       <bean class="org.springframework.jdbc.core.JdbcTemplate">
+           <property name="dataSource" ref="dataSource"></property>
+       </bean>
+       <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+           <property name="dataSource" ref="dataSource"></property>
+       </bean>
+   		// 配置切面，把哪个切面类配置到哪个目标方法中
+       <aop:config>
+           <aop:pointcut id="txPointCut" expression="execution(* com.tx.MyTransactionTest.*(..))"/>
+           <aop:advisor advice-ref="advice" pointcut-ref="txPointCut"></aop:advisor>
+       </aop:config>
+   		// 配置具体的事务切面，哪个目标方法需要进行事务控制
+       <tx:advice id="advice" transaction-manager="transactionManager">
+           <tx:attributes>
+               <tx:method name="account"/>
+           </tx:attributes>
+       </tx:advice>
+   ```
+
+3. 总结：
+
+   综上所述`aop`就是把什么配置到什么上，在`spring`事务中就是把哪一个事务控制类控制哪个目标方法上。
