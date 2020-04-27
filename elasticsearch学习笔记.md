@@ -168,9 +168,9 @@
      > POST /index/_doc/1/__update  在新版中可以使用 POST /index/__update/1  不指定type的方式
      >
      > {
-     >
-     > ​	"name": "修改一下name"
-     >
+     >  "doc": { // 一定要加上这个 doc 否则修改不了
+     >     "name": "修改name"
+     >  }
      > }
 
    + 方式2，通过PUT的方式来修改一个文档
