@@ -121,5 +121,27 @@
 + ADD  把宿主机的上文件添加到容器中，如果是压缩文件可以解压
 + COPY 把宿主机的上文件添加到容器中，不可以解压文件，仅仅是copy
 + EXPOSE  对外暴露的端口，对一些服务软件有用，如nginx 对外暴露 80， tomcat 对外暴露 8080
-+ RUN   执行一些linux命令
++ RUN   执行一些linux命令（此命令会在创建镜像的时候执行）
++ CMD 执行一些linux命令 （此命令会在创建容器的时候执行）
+
+记一次简单的`Dockerfile`文件的内容，主要是安装php运行环境并且带着`phpredis`客户端的操作，如下：
+
+```dockerfile
+FROM php:7.4-fpm
+RUN apt-get update && apt-get install vim -y && apt-get install net-tools -y //安装了一些基本常用的工具（vim, ifconig等）
+RUN curl -L -o /tmp/redis.tar.gz https://github.com/phpredis/phpredis/archive/5.2.2.tar.gz
+RUN tar xfz /tmp/redis.tar.gz
+RUN rm -r /tmp/redis.tar.gz
+RUN mkdir -p /usr/src/php/ext
+RUN mv phpredis-5.2.2 /usr/src/php/ext/redis
+RUN docker-php-ext-install redis
+```
+
+这样通过
+
+```shell
+docker build -t xxx(镜像名) . 
+```
+
+生成的镜像就会有`php`对`redis`操作的能力了，相当于安装了`php`对`redis`的扩展
 
